@@ -13,6 +13,9 @@ COPY server.py .
 # Copy the additional folder to the working directory
 COPY unoserver_master ./unoserver_master
 
+# Copy the requirements.txt file to the working directory
+COPY requirements.txt .
+
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 

@@ -1,11 +1,16 @@
 from flask import Flask, request, send_file, jsonify
 import io
 import logging
+import os
 from unoserver_master.src.unoserver.client import UnoClient
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Get the unoserver host and port from environment variables
+unoserver_host = os.getenv('UNOSERVER_HOST', 'localhost')
+unoserver_port = os.getenv('UNOSERVER_PORT', '2003')
 
 @app.route('/convert', methods=['POST'])
 def convert_file():
@@ -18,13 +23,12 @@ def convert_file():
 
     convert_to = request.form.get('convert_to', 'pdf')  # Default to PDF if not specified
     try:
-        client = UnoClient(server="localhost", port="2003")  # Adjust the server and port if necessary
+        client = UnoClient(server=unoserver_host, port=unoserver_port)
         result = client.convert(indata=file.read(), convert_to=convert_to)
         return send_file(
             io.BytesIO(result),
             mimetype='application/octet-stream',
             as_attachment=True,
-            #attachment_filename=f'converted.{convert_to}'
             download_name=f'converted.{convert_to}'
         )
     except Exception as e:
