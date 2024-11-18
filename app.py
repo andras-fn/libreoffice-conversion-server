@@ -29,7 +29,7 @@ def convert_document(input_data, convert_to):
             "com.sun.star.bridge.UnoUrlResolver", local_context
         )
         context = resolver.resolve(
-            "uno:socket,host=localhost,port=2002;urp;StarOffice.ComponentContext"
+            "uno:socket,host=127.0.0.1,port=2002;urp;StarOffice.ComponentContext"
         )
         service = context.ServiceManager
         desktop = service.createInstanceWithContext(
@@ -100,5 +100,6 @@ def convert_file():
         logger.error(f"Conversion error: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

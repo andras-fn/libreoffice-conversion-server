@@ -1,0 +1,2 @@
+@echo off
+"C:\Program Files\LibreOffice\program\soffice.exe" --headless --accept="socket,host=127.0.0.1,port=2002;urp;StarOffice.ServiceManager" --nologo --nodefault --nofirststartwizard --nolockcheck --norestore
