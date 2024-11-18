@@ -2,6 +2,9 @@ import sys
 import os
 import io
 import logging
+import subprocess
+import threading
+import time
 import uno
 import unohelper
 from flask import Flask, request, send_file, jsonify
@@ -22,6 +25,65 @@ class OutputStream(unohelper.Base, XOutputStream):
     def writeBytes(self, seq):
         self.buffer.write(seq.value)
 
+class LibreOfficeManager:
+    def __init__(self, host="127.0.0.1", port="2002"):
+        self.host = host
+        self.port = port
+        self.process = None
+
+    def start(self):
+        if self.is_running():
+            logger.info("LibreOffice is already running.")
+            return
+
+        connection = f"socket,host={self.host},port={self.port};urp;StarOffice.ComponentContext"
+        cmd = [
+            "libreoffice",
+            "--headless",
+            "--invisible",
+            "--nocrashreport",
+            "--nodefault",
+            "--nologo",
+            "--nofirststartwizard",
+            "--norestore",
+            f"--accept={connection}"
+        ]
+        logger.info("Starting LibreOffice with command: " + " ".join(cmd))
+        self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        time.sleep(20)  # Increase the wait time to ensure LibreOffice starts
+
+    def stop(self):
+        if self.process:
+            self.process.terminate()
+            try:
+                self.process.wait(10)
+            except subprocess.TimeoutExpired:
+                logger.info("Killing LibreOffice process")
+                self.process.kill()
+
+    def is_running(self):
+        return self.process and self.process.poll() is None
+
+libreoffice_manager = LibreOfficeManager()
+
+def check_libreoffice():
+    try:
+        local_context = uno.getComponentContext()
+        resolver = local_context.ServiceManager.createInstanceWithContext(
+            "com.sun.star.bridge.UnoUrlResolver", local_context
+        )
+        context = resolver.resolve(
+            f"uno:socket,host={libreoffice_manager.host},port={libreoffice_manager.port};urp;StarOffice.ComponentContext"
+        )
+        service = context.ServiceManager
+        desktop = service.createInstanceWithContext(
+            "com.sun.star.frame.Desktop", context
+        )
+        return True
+    except Exception as e:
+        logger.error(f"LibreOffice headless service is not available: {e}")
+        return False
+
 def convert_document(input_data, convert_to):
     try:
         local_context = uno.getComponentContext()
@@ -29,7 +91,7 @@ def convert_document(input_data, convert_to):
             "com.sun.star.bridge.UnoUrlResolver", local_context
         )
         context = resolver.resolve(
-            "uno:socket,host=127.0.0.1,port=2002;urp;StarOffice.ComponentContext"
+            f"uno:socket,host={libreoffice_manager.host},port={libreoffice_manager.port};urp;StarOffice.ComponentContext"
         )
         service = context.ServiceManager
         desktop = service.createInstanceWithContext(
@@ -88,6 +150,10 @@ def convert_file():
     if not filter_name:
         return jsonify({"error": f"Unsupported conversion format: {convert_to}"}), 400
 
+    # Check if LibreOffice headless service is available
+    if not check_libreoffice():
+        return jsonify({"error": "LibreOffice headless service is not available"}), 500
+
     try:
         result = convert_document(file.read(), filter_name)
         return send_file(
@@ -100,6 +166,10 @@ def convert_file():
         logger.error(f"Conversion error: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    if not libreoffice_manager.is_running():
+        libreoffice_manager.start()
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    finally:
+        libreoffice_manager.stop()
