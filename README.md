@@ -8,3 +8,10 @@ send requests to it like:
  - curl --location 'http://127.0.0.1:5000/convert' --form 'file=@"/C:/path/to/file/file.docx"' --form 'convert_to="png"'
 
 if a convert_to param isn't set then it'll convert to pdf
+
+
+
+run libreoffice in headless and listening mode:
+```bash
+libreoffice --headless --accept="socket,host=127.0.0.1,port=2002;urp;StarOffice.ServiceManager"
+```
