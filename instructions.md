@@ -14,3 +14,5 @@ run_app.bat
 
 to build:
 docker buildx build -t flask-libreoffice .
+
+docker run -d --name flask-app --network my_network -p 5000:5000 -e UNOSERVER_HOST=unoserver -e UNOSERVER_PORT=2003 flask-unoserver
